@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus Guard</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body class="w-[360px] min-h-[480px] bg-slate-100 text-slate-800 font-sans text-sm select-none">
+
+  <!-- ── Header ── -->
+  <header class="flex items-center justify-between px-5 py-4"
+          style="background: linear-gradient(135deg, #302b63 0%, #24243e 100%);">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl leading-none">&#128274;</span>
+      <div>
+        <p class="text-white font-bold text-base leading-tight tracking-wide">Focus Guard</p>
+        <p class="text-white/50 text-xs mt-0.5">Website Blocker</p>
+      </div>
+    </div>
+
+    <!-- Toggle -->
+    <div class="flex items-center gap-2">
+      <span id="toggle-label" class="text-xs font-semibold text-white/70">ON</span>
+      <label class="relative inline-block w-10 h-[22px] cursor-pointer" title="Enable / Disable">
+        <input type="checkbox" id="toggle-enabled" class="sr-only peer" checked />
+        <div class="absolute inset-0 rounded-full bg-white/25 transition-colors duration-200
+                    peer-checked:bg-green-400"></div>
+        <div class="absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow
+                    transition-transform duration-200 peer-checked:translate-x-[18px]"></div>
+      </label>
+    </div>
+  </header>
+
+  <!-- ── Content ── -->
+  <div class="flex flex-col gap-3 p-4">
+
+    <!-- Block Schedule -->
+    <div class="section-block bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+        Block Schedule
+      </p>
+      <div class="flex items-end gap-3">
+
+        <div class="flex-1 flex flex-col gap-1">
+          <label for="time-start"
+                 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            From
+          </label>
+          <input type="time" id="time-start" value="08:00"
+                 class="time-input w-full px-2.5 py-2 border-[1.5px] border-slate-200
+                        rounded-lg text-[15px] font-semibold text-slate-700 bg-slate-50
+                        outline-none cursor-pointer
+                        focus:border-indigo-400 focus:bg-white transition-colors" />
+        </div>
+
+        <span class="text-slate-300 text-lg font-light pb-2 shrink-0">&mdash;</span>
+
+        <div class="flex-1 flex flex-col gap-1">
+          <label for="time-end"
+                 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            To
+          </label>
+          <input type="time" id="time-end" value="21:00"
+                 class="time-input w-full px-2.5 py-2 border-[1.5px] border-slate-200
+                        rounded-lg text-[15px] font-semibold text-slate-700 bg-slate-50
+                        outline-none cursor-pointer
+                        focus:border-indigo-400 focus:bg-white transition-colors" />
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Blocked Sites -->
+    <div class="section-block bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+        Blocked Sites
+      </p>
+
+      <!-- Site list -->
+      <div id="sites-list"
+           class="sites-scroll flex flex-col gap-1.5 max-h-[160px] overflow-y-auto
+                  empty:before:block empty:before:text-center empty:before:text-slate-400
+                  empty:before:text-xs empty:before:py-3
+                  empty:before:content-['No_sites_added_yet.']">
+      </div>
+
+      <!-- Add row -->
+      <div class="flex gap-2 mt-3">
+        <input type="text" id="add-input" placeholder="e.g. instagram.com" maxlength="200"
+               class="flex-1 px-3 py-2 border-[1.5px] border-slate-200 rounded-lg
+                      text-[13px] text-slate-700 bg-slate-50 outline-none
+                      placeholder:text-slate-300
+                      focus:border-indigo-400 focus:bg-white transition-colors" />
+        <button id="btn-add"
+                class="px-3.5 py-2 bg-indigo-500 hover:bg-indigo-600 active:scale-95
+                       text-white text-[13px] font-semibold rounded-lg
+                       transition-all duration-150 whitespace-nowrap">
+          + Add
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Save ── -->
+  <div class="save-btn-wrap px-4 pb-2">
+    <button id="btn-save"
+            class="w-full py-3 text-white font-semibold text-sm rounded-xl
+                   active:scale-[0.98] transition-all duration-150"
+            style="background: linear-gradient(135deg, #302b63 0%, #24243e 100%);">
+      Save Settings
+    </button>
+  </div>
+
+  <!-- Status message -->
+  <p id="status"
+     class="h-6 text-center text-xs font-semibold text-emerald-500 px-4 pb-2
+            transition-opacity duration-300 opacity-0">
+    Settings saved!
+  </p>
+
+  <script src="popup.js"></script>
+</body>
+</html>

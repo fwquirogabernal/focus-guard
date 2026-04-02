@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smooth slide-in for site list items */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.site-item {
+  animation: slide-in 0.15s ease;
+}
+
+/* Native time input styling consistency */
+input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.4;
+  cursor: pointer;
+}
+
+/* Scrollbar for site list */
+.sites-scroll::-webkit-scrollbar       { width: 4px; }
+.sites-scroll::-webkit-scrollbar-track { background: transparent; }
+.sites-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 9999px; }
+
+/* Disabled state when extension is toggled off */
+body.disabled .section-block,
+body.disabled .save-btn-wrap {
+  opacity: 0.4;
+  pointer-events: none;
+}
