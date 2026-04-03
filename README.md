@@ -186,7 +186,6 @@ Go to `chrome://extensions/` and click the **↺ reload** button on the Focus Gu
 | Permission | Why it's needed |
 |---|---|
 | `storage` | Save and sync settings across Chrome sessions |
-| `tabs` | Reserved for future tab-level features |
 | `host_permissions: <all_urls>` | Allows the content script to run on any site so blocking can be enforced everywhere |
 
 No data is sent to any external server. All settings stay in Chrome's local sync storage.
