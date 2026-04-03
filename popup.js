@@ -4,7 +4,6 @@ const $ = (id) => document.getElementById(id);
 
 let blockedSites = [];
 
-// Load settings from storage
 chrome.storage.sync.get(
   {
     enabled: true,
@@ -23,7 +22,6 @@ chrome.storage.sync.get(
   }
 );
 
-// Toggle enable/disable
 $('toggle-enabled').addEventListener('change', (e) => {
   const enabled = e.target.checked;
   updateToggleLabel(enabled);
@@ -38,7 +36,6 @@ function updateBodyState(enabled) {
   document.body.classList.toggle('disabled', !enabled);
 }
 
-// Render the site list
 function renderSites() {
   const list = $('sites-list');
   list.innerHTML = '';
@@ -56,7 +53,6 @@ function renderSites() {
   });
 }
 
-// Remove site via event delegation
 $('sites-list').addEventListener('click', (e) => {
   const btn = e.target.closest('.site-remove');
   if (!btn) return;
@@ -65,7 +61,6 @@ $('sites-list').addEventListener('click', (e) => {
   renderSites();
 });
 
-// Add site
 function addSite() {
   const input = $('add-input');
   const raw = input.value.trim();
@@ -91,7 +86,6 @@ function addSite() {
   renderSites();
   input.value = '';
 
-  // Scroll list to bottom
   const list = $('sites-list');
   list.scrollTop = list.scrollHeight;
 }
@@ -102,7 +96,6 @@ $('add-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') addSite();
 });
 
-// Save settings
 $('btn-save').addEventListener('click', () => {
   const settings = {
     enabled: $('toggle-enabled').checked,
@@ -122,23 +115,16 @@ $('btn-save').addEventListener('click', () => {
   });
 });
 
-// Helpers
-
 function normalizeEntry(input) {
-  // Strip protocol, www prefix, query string, and trailing slashes
   let value = input.toLowerCase();
   value = value.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
-  // Remove query string and hash
   value = value.split('?')[0].split('#')[0];
-  // Remove trailing slash
   value = value.replace(/\/+$/, '');
 
-  // Split into domain and optional path
   const slashIndex = value.indexOf('/');
   const domain = slashIndex === -1 ? value : value.substring(0, slashIndex);
   const path = slashIndex === -1 ? '' : value.substring(slashIndex);
 
-  // Validate domain part
   if (!/^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?)+$/.test(domain)) {
     return null;
   }

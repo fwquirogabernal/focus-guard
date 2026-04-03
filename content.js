@@ -1,15 +1,14 @@
 // Focus Guard - Content Script
-// Runs at document_start on every page to enforce time-based blocking
 
 (function () {
-  // Only run in the top-level frame
   if (window.self !== window.top) return;
 
   const hostname = window.location.hostname.replace(/^www\./, '').toLowerCase();
   if (!hostname) return;
 
-  let cachedSettings = null;
+  let parsedEntries = [];
   let isBlocking = false;
+  let hasPathEntries = false;
 
   chrome.storage.sync.get(
     {
@@ -20,52 +19,65 @@
     },
     (settings) => {
       if (chrome.runtime.lastError) return;
-      cachedSettings = settings;
-      checkAndBlock();
+      if (!settings.enabled) return;
+
+      parsedEntries = parseBlockedSites(settings.blockedSites);
+      hasPathEntries = parsedEntries.some(
+        (entry) => entry.path && matchesDomain(hostname, entry.domain)
+      );
+
+      checkAndBlock(settings);
+
+      if (hasPathEntries) {
+        let lastUrl = window.location.href;
+        setInterval(() => {
+          const currentUrl = window.location.href;
+          if (currentUrl !== lastUrl) {
+            lastUrl = currentUrl;
+            checkAndBlock(settings);
+          }
+        }, 500);
+      }
     }
   );
 
-  // Detect SPA navigations by polling for URL changes
-  // This is more reliable than patching pushState/replaceState because
-  // some sites (e.g. YouTube) use custom navigation systems
-  let lastUrl = window.location.href;
-  setInterval(() => {
-    const currentUrl = window.location.href;
-    if (currentUrl !== lastUrl) {
-      lastUrl = currentUrl;
-      if (cachedSettings) checkAndBlock();
-    }
-  }, 500);
-
-  function checkAndBlock() {
-    const settings = cachedSettings;
-    if (!settings.enabled) return;
-
-    const currentPath = window.location.pathname.toLowerCase();
-
-    const shouldBlock = settings.blockedSites.some((site) => {
+  function parseBlockedSites(sites) {
+    return sites.map((site) => {
       const normalized = site.trim().replace(/^www\./, '').toLowerCase();
-      if (!normalized) return false;
+      if (!normalized) return null;
 
       const slashIndex = normalized.indexOf('/');
       if (slashIndex === -1) {
-        // Domain-only entry: block the entire site (including subdomains)
-        return hostname === normalized || hostname.endsWith('.' + normalized);
+        return { domain: normalized, path: null };
       }
+      return {
+        domain: normalized.substring(0, slashIndex),
+        path: normalized.substring(slashIndex),
+      };
+    }).filter(Boolean);
+  }
 
-      // Path-based entry: match domain + path prefix
-      const siteDomain = normalized.substring(0, slashIndex);
-      const sitePath = normalized.substring(slashIndex);
-      const domainMatch = hostname === siteDomain || hostname.endsWith('.' + siteDomain);
-      return domainMatch && (currentPath === sitePath || currentPath.startsWith(sitePath + '/'));
+  function matchesDomain(hostname, domain) {
+    return hostname === domain || hostname.endsWith('.' + domain);
+  }
+
+  function shouldBlockUrl(pathname) {
+    return parsedEntries.some((entry) => {
+      if (!matchesDomain(hostname, entry.domain)) return false;
+      if (!entry.path) return true;
+      return pathname === entry.path || pathname.startsWith(entry.path + '/');
     });
+  }
+
+  function checkAndBlock(settings) {
+    const currentPath = window.location.pathname.toLowerCase();
+    const shouldBlock = shouldBlockUrl(currentPath);
 
     if (shouldBlock && !isBlocking) {
       if (!isCurrentTimeInRange(settings.blockStart, settings.blockEnd)) return;
       isBlocking = true;
       blockPage(hostname, settings.blockStart, settings.blockEnd);
     } else if (!shouldBlock && isBlocking) {
-      // User navigated away from a blocked path within the same SPA — remove overlay
       isBlocking = false;
       unblockPage();
     }
@@ -78,7 +90,6 @@
     const [eh, em] = end.split(':').map(Number);
     const s = sh * 60 + sm;
     const e = eh * 60 + em;
-    // Handle overnight ranges (e.g. 22:00 - 06:00)
     if (s <= e) {
       return cur >= s && cur < e;
     }
@@ -86,7 +97,6 @@
   }
 
   function blockPage(hostname, blockStart, blockEnd) {
-    // Stop any further page loading
     window.stop();
 
     const overlay = document.createElement('div');
@@ -109,7 +119,6 @@
 
     overlay.innerHTML = buildOverlayHTML(hostname, blockStart, blockEnd);
 
-    // Append to <html> immediately (body may not exist yet at document_start)
     const attach = () => {
       const root = document.documentElement || document.body;
       if (root && !document.getElementById('__focus_guard_overlay__')) {
@@ -117,10 +126,6 @@
       }
     };
 
-    attach();
-    document.addEventListener('DOMContentLoaded', attach);
-
-    // Blur the page content underneath
     const blurContent = () => {
       if (document.body) {
         document.body.style.cssText += [
@@ -130,10 +135,17 @@
         ].join('!important;') + '!important';
       }
     };
-    blurContent();
-    document.addEventListener('DOMContentLoaded', blurContent);
 
-    // Re-attach if something removes the overlay (e.g. SPA route changes)
+    attach();
+    blurContent();
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        attach();
+        blurContent();
+      }, { once: true });
+    }
+
     const guard = new MutationObserver(() => {
       if (!document.getElementById('__focus_guard_overlay__')) {
         attach();
@@ -146,10 +158,12 @@
         guard.observe(document.documentElement, { childList: true, subtree: true });
       }
     };
-    startGuard();
-    document.addEventListener('DOMContentLoaded', startGuard);
 
-    // Intercept any navigation attempts
+    startGuard();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startGuard, { once: true });
+    }
+
     window.addEventListener('beforeunload', (e) => {
       e.preventDefault();
     }, true);
