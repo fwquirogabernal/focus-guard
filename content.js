@@ -8,6 +8,9 @@
   const hostname = window.location.hostname.replace(/^www\./, '').toLowerCase();
   if (!hostname) return;
 
+  let cachedSettings = null;
+  let isBlocking = false;
+
   chrome.storage.sync.get(
     {
       enabled: true,
@@ -17,20 +20,56 @@
     },
     (settings) => {
       if (chrome.runtime.lastError) return;
-      if (!settings.enabled) return;
-
-      const isBlocked = settings.blockedSites.some((site) => {
-        const normalized = site.trim().replace(/^www\./, '').toLowerCase();
-        if (!normalized) return false;
-        return hostname === normalized || hostname.endsWith('.' + normalized);
-      });
-
-      if (!isBlocked) return;
-      if (!isCurrentTimeInRange(settings.blockStart, settings.blockEnd)) return;
-
-      blockPage(hostname, settings.blockStart, settings.blockEnd);
+      cachedSettings = settings;
+      checkAndBlock();
     }
   );
+
+  // Detect SPA navigations by polling for URL changes
+  // This is more reliable than patching pushState/replaceState because
+  // some sites (e.g. YouTube) use custom navigation systems
+  let lastUrl = window.location.href;
+  setInterval(() => {
+    const currentUrl = window.location.href;
+    if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
+      if (cachedSettings) checkAndBlock();
+    }
+  }, 500);
+
+  function checkAndBlock() {
+    const settings = cachedSettings;
+    if (!settings.enabled) return;
+
+    const currentPath = window.location.pathname.toLowerCase();
+
+    const shouldBlock = settings.blockedSites.some((site) => {
+      const normalized = site.trim().replace(/^www\./, '').toLowerCase();
+      if (!normalized) return false;
+
+      const slashIndex = normalized.indexOf('/');
+      if (slashIndex === -1) {
+        // Domain-only entry: block the entire site (including subdomains)
+        return hostname === normalized || hostname.endsWith('.' + normalized);
+      }
+
+      // Path-based entry: match domain + path prefix
+      const siteDomain = normalized.substring(0, slashIndex);
+      const sitePath = normalized.substring(slashIndex);
+      const domainMatch = hostname === siteDomain || hostname.endsWith('.' + siteDomain);
+      return domainMatch && (currentPath === sitePath || currentPath.startsWith(sitePath + '/'));
+    });
+
+    if (shouldBlock && !isBlocking) {
+      if (!isCurrentTimeInRange(settings.blockStart, settings.blockEnd)) return;
+      isBlocking = true;
+      blockPage(hostname, settings.blockStart, settings.blockEnd);
+    } else if (!shouldBlock && isBlocking) {
+      // User navigated away from a blocked path within the same SPA — remove overlay
+      isBlocking = false;
+      unblockPage();
+    }
+  }
 
   function isCurrentTimeInRange(start, end) {
     const now = new Date();
@@ -114,6 +153,16 @@
     window.addEventListener('beforeunload', (e) => {
       e.preventDefault();
     }, true);
+  }
+
+  function unblockPage() {
+    const overlay = document.getElementById('__focus_guard_overlay__');
+    if (overlay) overlay.remove();
+    if (document.body) {
+      document.body.style.filter = '';
+      document.body.style.pointerEvents = '';
+      document.body.style.userSelect = '';
+    }
   }
 
   function buildOverlayHTML(hostname, blockStart, blockEnd) {

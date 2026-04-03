@@ -8,7 +8,8 @@ A Chrome extension that blocks distracting websites during configurable focus ho
 
 - **Time-based blocking** — define a daily start and end time for your focus period
 - **Overnight ranges** — supports schedules that span midnight (e.g. 22:00 – 06:00)
-- **Custom site list** — add or remove any domain at any time
+- **Custom site list** — add or remove any domain or URL path at any time
+- **Full or partial blocking** — block an entire domain (`instagram.com`) or just a specific path (`youtube.com/shorts`)
 - **Subdomain aware** — blocking `instagram.com` also blocks `www.instagram.com`, `l.instagram.com`, etc.
 - **SPA resistant** — a MutationObserver re-applies the overlay if a single-page app tries to remove it
 - **Master toggle** — instantly enable or disable all blocking without losing your settings
@@ -66,8 +67,10 @@ Use the **From** and **To** time pickers to define your focus window.
 
 ### Managing Blocked Sites
 
-- Type a domain in the input field (e.g. `instagram.com`) and press **Enter** or click **+ Add**
-- The `www.` prefix and `https://` protocol are stripped automatically — you can paste a full URL and it will be normalized
+- Type a domain or domain/path in the input field and press **Enter** or click **+ Add**
+  - `instagram.com` — blocks the entire site
+  - `youtube.com/shorts` — blocks only YouTube Shorts, leaving the rest of YouTube accessible
+- The `www.` prefix, `https://` protocol, query strings, and trailing slashes are stripped automatically — you can paste a full URL and it will be normalized
 - Click **✕** next to any entry to remove it
 - Press **Save Settings** to persist all changes
 
@@ -87,9 +90,11 @@ facebook.com
 
 The content script (`content.js`) runs at `document_start` on every page — before any HTML is rendered. When a navigation is detected:
 
-1. The current hostname is normalized (lowercased, `www.` stripped)
+1. The current hostname and pathname are normalized (lowercased, `www.` stripped)
 2. Settings are read from Chrome sync storage
-3. The hostname is matched against the blocked sites list (exact match or subdomain)
+3. Each blocked entry is checked:
+   - **Domain-only** entries (e.g. `instagram.com`) match the full hostname or any subdomain
+   - **Path entries** (e.g. `youtube.com/shorts`) match only when both the domain and the URL path prefix match
 4. The current time is compared against the configured range
 5. If all conditions are met:
    - `window.stop()` halts further page loading
@@ -109,7 +114,7 @@ All settings are stored via `chrome.storage.sync`.
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `enabled` | `boolean` | `true` | Master on/off switch |
-| `blockedSites` | `string[]` | `['instagram.com', 'twitter.com', 'facebook.com']` | Normalized domain list |
+| `blockedSites` | `string[]` | `['instagram.com', 'twitter.com', 'facebook.com']` | Normalized domain or domain/path list |
 | `blockStart` | `string` (HH:MM) | `'08:00'` | Start of the focus window |
 | `blockEnd` | `string` (HH:MM) | `'21:00'` | End of the focus window |
 
@@ -193,3 +198,4 @@ No data is sent to any external server. All settings stay in Chrome's local sync
 - **Does not block at the network level.** A determined user can disable the extension or use another browser. This tool is designed for self-accountability, not parental controls.
 - **One schedule per day.** There is currently no support for multiple time windows (e.g. block 9–12 AM and again 2–5 PM).
 - **One schedule for all sites.** All blocked sites share the same time window. Per-site schedules are not supported yet.
+- **Path matching is prefix-based.** Blocking `youtube.com/shorts` also blocks `youtube.com/shorts/abc123`, but does not block `youtube.com/shortslive` (a `/` boundary is required).

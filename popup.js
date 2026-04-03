@@ -71,13 +71,13 @@ function addSite() {
   const raw = input.value.trim();
   if (!raw) return;
 
-  const normalized = normalizeDomain(raw);
+  const normalized = normalizeEntry(raw);
   if (!normalized) {
     input.style.borderColor = '#fc8181';
-    input.placeholder = 'Invalid domain — try: instagram.com';
+    input.placeholder = 'Invalid — try: instagram.com or youtube.com/shorts';
     setTimeout(() => {
       input.style.borderColor = '';
-      input.placeholder = 'e.g. instagram.com';
+      input.placeholder = 'e.g. instagram.com or youtube.com/shorts';
     }, 2000);
     return;
   }
@@ -124,15 +124,26 @@ $('btn-save').addEventListener('click', () => {
 
 // Helpers
 
-function normalizeDomain(input) {
-  // Strip protocol and path, keep only the hostname
+function normalizeEntry(input) {
+  // Strip protocol, www prefix, query string, and trailing slashes
   let value = input.toLowerCase();
-  value = value.replace(/^https?:\/\//i, '').replace(/^www\./i, '').split('/')[0].split('?')[0];
-  // Basic domain validation
-  if (!/^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?)+$/.test(value)) {
+  value = value.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  // Remove query string and hash
+  value = value.split('?')[0].split('#')[0];
+  // Remove trailing slash
+  value = value.replace(/\/+$/, '');
+
+  // Split into domain and optional path
+  const slashIndex = value.indexOf('/');
+  const domain = slashIndex === -1 ? value : value.substring(0, slashIndex);
+  const path = slashIndex === -1 ? '' : value.substring(slashIndex);
+
+  // Validate domain part
+  if (!/^[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]{0,61}[a-z0-9])?)+$/.test(domain)) {
     return null;
   }
-  return value;
+
+  return path ? domain + path : domain;
 }
 
 function escapeHTML(str) {
