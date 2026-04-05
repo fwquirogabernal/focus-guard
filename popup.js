@@ -24,9 +24,65 @@ chrome.storage.sync.get(
 
 $('toggle-enabled').addEventListener('change', (e) => {
   const enabled = e.target.checked;
-  updateToggleLabel(enabled);
-  updateBodyState(enabled);
+
+  if (enabled) {
+    // Reactivating — no confirmation needed, save immediately
+    updateToggleLabel(true);
+    updateBodyState(true);
+    chrome.storage.sync.set({ enabled: true });
+    return;
+  }
+
+  // Deactivating — require confirmation
+  e.target.checked = true; // revert until confirmed
+  showDisableConfirmation();
 });
+
+function showDisableConfirmation() {
+  const overlay = $('confirm-overlay');
+  const input = $('confirm-input');
+  const okBtn = $('confirm-ok');
+
+  input.value = '';
+  okBtn.disabled = true;
+  overlay.classList.remove('hidden');
+  input.focus();
+
+  function onInput() {
+    okBtn.disabled = input.value.trim().toLowerCase() !== 'unfocus';
+  }
+
+  function confirm() {
+    if (input.value.trim().toLowerCase() !== 'unfocus') return;
+    cleanup();
+    $('toggle-enabled').checked = false;
+    updateToggleLabel(false);
+    updateBodyState(false);
+    chrome.storage.sync.set({ enabled: false });
+  }
+
+  function cancel() {
+    cleanup();
+  }
+
+  function onKeydown(e) {
+    if (e.key === 'Enter') confirm();
+    if (e.key === 'Escape') cancel();
+  }
+
+  function cleanup() {
+    overlay.classList.add('hidden');
+    input.removeEventListener('input', onInput);
+    okBtn.removeEventListener('click', confirm);
+    $('confirm-cancel').removeEventListener('click', cancel);
+    input.removeEventListener('keydown', onKeydown);
+  }
+
+  input.addEventListener('input', onInput);
+  okBtn.addEventListener('click', confirm);
+  $('confirm-cancel').addEventListener('click', cancel);
+  input.addEventListener('keydown', onKeydown);
+}
 
 function updateToggleLabel(enabled) {
   $('toggle-label').textContent = enabled ? 'ON' : 'OFF';

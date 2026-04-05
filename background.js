@@ -5,9 +5,9 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     chrome.storage.sync.set({
       enabled: true,
-      blockedSites: ['instagram.com', 'twitter.com', 'facebook.com'],
+      blockedSites: ['instagram.com', 'x.com', 'facebook.com'],
       blockStart: '08:00',
-      blockEnd: '21:00',
+      blockEnd: '17:00',
     });
   }
 });
